@@ -43,13 +43,13 @@
   )
 
 (defn notes-component [{:keys [notes on-save on-stop on-change]}]
-  (println "NOTES")
   (let [val (atom notes)
         stop #(do (reset! val "")
                   (if on-stop (on-stop)))
         save #(let [v (-> @val str clojure.string/trim)]
                 (on-save v))]
-    (fn [] [:div {:class "container"}
+    (fn []
+      [:div {:class "container"}
             [:input {:type "text"
                      :value @val
                      :on-blur save
