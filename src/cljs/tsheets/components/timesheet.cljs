@@ -12,6 +12,8 @@
 (defn select-jobcode [ts jobcode]
   (swap! ts assoc-in [:jobcode] jobcode))
 
+(defn reset-jobcode-state [jobcode-state]
+  (reset! jobcode-state {:parent-id :0}))
 
 (defn valid-clock-in? [ts]
   (if (keyword? (:jobcode @ts))
@@ -81,6 +83,7 @@
     [:div {:class "container"}
      [:p "Jobcodes"]
      [:button {:type "button"
+               :disabled (= :0 (:parent-id jobcode-state))
                :on-click #(on-select-parent :0)} "Back"]
      (for [jobcode (seq (into (sorted-map) jobcodes))]
        (if (true? (= (:parent-id (val jobcode)) (:parent-id jobcode-state)))
@@ -94,11 +97,9 @@
                                                                    :jobcodes jobcodes}) "selected"))
                    :id (key jobcode)
                    :value (:name (val jobcode))
-                   :on-click #(do
-                                (println (key jobcode))
-                                (if (true? (:has-children (val jobcode)))
-                                 (on-select-parent (key jobcode))
-                                 (on-select-child (key jobcode))))}]])
+                   :on-click #(if (true? (:has-children (val jobcode)))
+                                (on-select-parent (key jobcode))
+                                (on-select-child (key jobcode)))}]])
        )])
   )
 
@@ -108,7 +109,9 @@
     [:div
      [jobcode-component {:jobcodes @jobcodes
                          :timesheet @timesheet
-                         :on-select-child #(select-jobcode timesheet %)
+                         :on-select-child #(do
+                                             (reset-jobcode-state jobcode-state)
+                                             (select-jobcode timesheet %))
                          :on-select-parent #(swap! jobcode-state assoc-in [:parent-id] %)
                          :jobcode-state @jobcode-state}]
      [notes-component {:notes (:notes @timesheet)
