@@ -31,7 +31,7 @@
 
 (def save-buffer (chan))
 (go (while true
-      (println (str "COMPLETE TIMESHEET" (<! save-buffer))))
+      (println (str "COMPLETE TIMESHEET " (<! save-buffer))))
     )
 (defn save-timesheet [ts-ref]
   (go (>! save-buffer ts-ref)))

@@ -43,22 +43,14 @@
   )
 
 (defn notes-component [{:keys [notes on-save on-stop on-change]}]
-  (let [val (atom notes)
-        stop #(do (reset! val "")
-                  (if on-stop (on-stop)))
-        save #(let [v (-> @val str clojure.string/trim)]
-                (on-save v))]
-    (fn []
-      [:div {:class "container"}
-            [:input {:type "text"
-                     :value @val
-                     :on-blur save
-                     :on-change #(reset! val (-> % .-target .-value))
-                     :on-key-down #(case (.-which %)
-                                     13 (save)
-                                     27 (stop)
-                                     nil)}]
-            ])))
+  (println notes)
+  [:div {:class "container"}
+   [:input {:type "text"
+            :value notes
+            
+            :on-change #(on-change (-> % .-target .-value))
+            }]
+   ])
 
 (defn clock-in-component [{:keys [timesheet clocked-in on-clock-out on-clock-in]}]
   (if (true? clocked-in)
@@ -88,15 +80,16 @@
 
 (defn timesheet-component [{:keys [timesheet jobcodes on-clock-out]}]
   (println @timesheet)
-  [:div
-   [jobcode-component {:jobcodes jobcodes
-                       :timesheet timesheet
-                       :on-select #(select-jobcode timesheet %)}]
-   [notes-component {:notes (:notes timesheet)
-                     :on-change #(set-notes timesheet %)
-                     :on-save #(set-notes timesheet %)}]
-   [clock-in-component {:timesheet timesheet
-                        :clocked-in (is-clocked-in? timesheet)
-                        :on-clock-in #(clock-in timesheet)
-                        :on-clock-out #(do ((clock-out timesheet)
-                                            (on-clock-out)))}]])
+  (let []
+    [:div
+     [jobcode-component {:jobcodes jobcodes
+                         :timesheet timesheet
+                         :on-select #(select-jobcode timesheet %)}]
+     [notes-component {:notes (:notes @timesheet)
+                       :on-change #(set-notes timesheet %)
+                       :on-save #(set-notes timesheet %)}]
+     [clock-in-component {:timesheet timesheet
+                          :clocked-in (is-clocked-in? timesheet)
+                          :on-clock-in #(clock-in timesheet)
+                          :on-clock-out #(do ((clock-out timesheet)
+                                              (on-clock-out)))}]]))
