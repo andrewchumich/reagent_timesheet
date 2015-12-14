@@ -25,9 +25,29 @@
 
 (defonce timesheet-atom (atom (reset-timesheet)))
 
-(defonce jobcodes-atom (atom ["Flipping Burgers"
-                         "Sweeping Floors"]))
+(defonce jobcodes-atom (atom {:000 {:name "Flipping Burgers"
+                                    :id :000
+                                    :has-children false
+                                    :parent-id :0}
+                              :001 {:name "Being Awesome"
+                                    :id :001
+                                    :has-children false
+                                    :parent-id :0}
+                              :002 {:name "Exercising"
+                                    :id :002
+                                    :has-children true
+                                    :parent-id :0}
+                              :003 {:name "Running"
+                                    :id :003
+                                    :has-children false
+                                    :parent-id :002}
+                              :004 {:name "Lifting Weights"
+                                    :id :004
+                                    :has-children false
+                                    :parent-id :002}}))
 
+(defonce jobcode-state (atom {:level 0
+                              :parent-id :0}))
 
 (def save-buffer (chan))
 (go (while true
@@ -51,6 +71,7 @@
   [:div
    [timesheet-component {:timesheet timesheet-atom
                          :jobcodes jobcodes-atom
+                         :jobcode-state jobcode-state
                          :on-clock-out #(do (save-timesheet @timesheet-atom)
                                             (reset-timesheet timesheet-atom))}]
    [:div [:a {:href "/about"} "go to about page"]]])
