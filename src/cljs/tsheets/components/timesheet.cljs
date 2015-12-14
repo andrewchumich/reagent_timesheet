@@ -14,7 +14,7 @@
 
 
 (defn valid-clock-in? [ts]
-  (if (string? (:jobcode @ts))
+  (if (keyword? (:jobcode @ts))
     true
     false))
 
@@ -44,10 +44,13 @@
 (defn get-jobcode [{:keys [jobcode-id jobcodes]}]
   true)
 
-(defn is-selected? [{:keys [parent child-id jobcodes]}]
-  (println (str "child " child-id))
-  (println (str "parent " parent))
-  (= child-id parent))
+(defn is-selected? [{:keys [parent child jobcodes]}]
+  (if (nil? child)
+    false
+    (if (= (:id child) (:id parent))
+      true
+      (is-selected? {:parent parent
+                     :child ((:parent-id child) jobcodes)}))))
 
 (defn notes-component [{:keys [notes on-save on-stop on-change]}]
   [:div {:class "container"}
@@ -83,9 +86,12 @@
        (if (true? (= (:parent-id (val jobcode)) (:parent-id jobcode-state)))
          [:div {:key (key jobcode)}
           [:input {:type "button"
-                   :class (str "jobcode-list  " (if (is-selected? {:parent (key jobcode)
-                                                                 :child-id (:jobcode timesheet)
-                                                                 :jobcodes jobcodes}) "selected"))
+                   :class (str "jobcode-list  " (if (is-selected? {:parent (val jobcode)
+                                                                   :child (let [child-id (:jobcode timesheet)]
+                                                                            (if (nil? child-id)
+                                                                              nil
+                                                                              (child-id jobcodes)))
+                                                                   :jobcodes jobcodes}) "selected"))
                    :id (key jobcode)
                    :value (:name (val jobcode))
                    :on-click #(do
