@@ -14,14 +14,19 @@
 
 (defn reset-timesheet
   ([] (do
-        (println "RESET W/O ARGS")
         {:start nil
          :end nil
          :jobcode nil
          :notes ""}))
   ([timesheet] (do
-          (println "RESET W ARGS")
           (reset! timesheet (reset-timesheet)))))
+
+(defn reset-jobcode-state
+  ([] (do
+        {:parent-id :0}
+        ))
+  ([jobcode-state]
+   (reset! jobcode-state (reset-jobcode-state))))
 
 (defonce timesheet-atom (atom (reset-timesheet)))
 
@@ -46,8 +51,7 @@
                                     :has-children false
                                     :parent-id :002}}))
 
-(defonce jobcode-state (atom {:level 0
-                              :parent-id :0}))
+(defonce jobcode-state-atom (atom (reset-jobcode-state)))
 
 (def save-buffer (chan))
 (go (while true
@@ -71,8 +75,9 @@
   [:div
    [timesheet-component {:timesheet timesheet-atom
                          :jobcodes jobcodes-atom
-                         :jobcode-state jobcode-state
+                         :jobcode-state jobcode-state-atom
                          :on-clock-out #(do (save-timesheet @timesheet-atom)
+                                            (reset-jobcode-state jobcode-state-atom)
                                             (reset-timesheet timesheet-atom))}]
    [:div [:a {:href "/about"} "go to about page"]]])
 

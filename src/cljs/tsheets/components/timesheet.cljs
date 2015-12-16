@@ -39,9 +39,7 @@
   (if (valid-clock-out? ts)
     (do
       (swap! ts assoc-in [:end] (new js/Date))
-      )
-    )
-  )
+      )))
 
 (defn get-jobcode [{:keys [jobcode-id jobcodes]}]
   true)
@@ -105,20 +103,18 @@
 
 (defn timesheet-component [{:keys [timesheet jobcodes jobcode-state on-clock-out]}]
   (println @timesheet)
-  (let []
-    [:div
-     [jobcode-component {:jobcodes @jobcodes
-                         :timesheet @timesheet
-                         :on-select-child #(do
-                                             (reset-jobcode-state jobcode-state)
-                                             (select-jobcode timesheet %))
-                         :on-select-parent #(swap! jobcode-state assoc-in [:parent-id] %)
-                         :jobcode-state @jobcode-state}]
-     [notes-component {:notes (:notes @timesheet)
-                       :on-change #(set-notes timesheet %)
-                       :on-save #(set-notes timesheet %)}]
-     [clock-in-component {:timesheet timesheet
-                          :clocked-in (is-clocked-in? timesheet)
-                          :on-clock-in #(clock-in timesheet)
-                          :on-clock-out #(do ((clock-out timesheet)
-                                              (on-clock-out)))}]]))
+  [:div
+   [jobcode-component {:jobcodes @jobcodes
+                       :timesheet @timesheet
+                       :on-select-child #(do
+                                           (reset-jobcode-state jobcode-state)
+                                           (select-jobcode timesheet %))
+                       :on-select-parent #(swap! jobcode-state assoc-in [:parent-id] %)
+                       :jobcode-state @jobcode-state}]
+   [notes-component {:notes (:notes @timesheet)
+                     :on-change #(set-notes timesheet %)
+                     :on-save #(set-notes timesheet %)}]
+   [clock-in-component {:clocked-in (is-clocked-in? timesheet)
+                        :on-clock-in #(clock-in timesheet)
+                        :on-clock-out #(do ((clock-out timesheet)
+                                            (on-clock-out)))}]])
