@@ -12,17 +12,23 @@
 (defn select-jobcode [ts jobcode]
   (swap! ts assoc-in [:jobcode] jobcode))
 
+(defn select-custom-field [ts custom-field]
+  (println custom-field)
+  (let [custom-field-id (:custom-field-id custom-field)
+        custom-field-item-id (:custom-field-item-id custom-field)] 
+    (swap! ts assoc-in [:custom-fields custom-field-id] custom-field-item-id)))
+
 (defn reset-jobcode-state [jobcode-state]
-  (reset! jobcode-state {:parent-id :0}))
+  (swap! jobcode-state assoc-in [:parent-id] :0))
 
 (defn valid-clock-in? [ts]
-  (if (keyword? (:jobcode @ts))
+  (if (keyword? (:jobcode ts))
     true
     false))
 
 
 (defn is-clocked-in? [ts]
-  (= (type (:start @ts)) js/Date))
+  (and (nil? (:end ts)) (= (type (:start ts)) js/Date)))
 
 (defn valid-clock-out? [ts]
   (if (and (valid-clock-in? ts) (is-clocked-in? ts))
@@ -31,29 +37,25 @@
     ))
 
 (defn clock-in [ts]
-  (if (valid-clock-in? ts) 
-    (swap! ts assoc-in [:start] (new js/Date))
-    ))
+  (swap! ts assoc-in [:start] (new js/Date)))
 
 (defn clock-out [ts]
-  (if (valid-clock-out? ts)
-    (do
-      (swap! ts assoc-in [:end] (new js/Date))
-      )))
+  (swap! ts assoc-in [:end] (new js/Date)))
 
 (defn get-jobcode [{:keys [jobcode-id jobcodes]}]
   true)
 
 (defn is-selected? [{:keys [parent child list]}]
   (do
-    (println parent)
-    (println child)
     (if (nil? child)
-     false
-     (if (= (:id child) (:id parent))
-       true
-       (is-selected? {:parent parent
-                      :child ((:parent-id child) list)})))))
+      false
+      (if (= (:id child) (:id parent))
+        true
+        (if (nil? (:parent-id child)) 
+          false
+          (is-selected? {:parent parent
+                         :child ((:parent-id child) list)}))))))
+
 
 (defn notes-component [{:keys [notes on-save on-stop on-change]}]
   [:div {:class "container"}
@@ -65,6 +67,7 @@
                             nil)
             }]
    ])
+
 
 (defn clock-in-component [{:keys [clocked-in on-clock-out on-clock-in]}]
   (if (true? clocked-in)
@@ -80,55 +83,89 @@
               :on-click #(on-clock-in)}]]))
 
 
-(defn managed-list-component [{:keys [list timesheet-id child-id on-select-child on-select-parent parent-id]}]
+(defn managed-list-component [{:keys [list current-id on-select on-select-parent is-visible?]}]
   [:div
    [:button {:type "button"
-             :disabled (= :0 parent-id)
+             :disabled false
              :on-click #(on-select-parent :0)} "Back"]
+   [:button {:type "button"
+             :disabled (nil? current-id)
+             :on-click #(on-select nil)
+             } "X"]
    (for [list-item (seq (into (sorted-map) list))]
-     (if (true? (= (:parent-id (val list-item)) parent-id))
+     (if (is-visible? (val list-item))
        [:div {:key (key list-item)}
         [:input {:type "button"
                  :class (str "jobcode-list  " (if (is-selected? {:parent (val list-item)
-                                                                 :child (if (nil? child-id)
+                                                                 :child (if (nil? current-id)
                                                                           nil
-                                                                          (child-id list))
+                                                                          (current-id list))
                                                                  :list list}) "selected"))
                  :id (key list-item)
                  :value (:name (val list-item))
                  :on-click #(if (true? (:has-children (val list-item)))
                               (on-select-parent (key list-item))
-                              (on-select-child (key list-item)))}]])
+                              (on-select (key list-item)))}]])
      )
    ])
 
+(defn custom-field-items-component [{:keys [custom-field-items current-id on-select on-select-parent custom-field-id]}]
+  [:div {:class "container"}
+   [managed-list-component {:list custom-field-items
+                            :on-select on-select
+                            :on-select-parent on-select-parent
+                            :current-id current-id
+                            :is-visible? #(= (:custom-field-id %) custom-field-id)}]
+   ])
 
-(defn jobcode-component [{:keys [jobcodes timesheet on-select-child on-select-parent jobcode-state]}]
+(defn custom-fields-component [{:keys [custom-fields custom-field-items current-custom-fields on-select]}]
+  [:div {:class "container"};
+   (for [custom-field (seq (into (sorted-map) custom-fields))]
+     [:div {:key (key custom-field)} 
+      [:p {:class "title"} (:name (val custom-field))]
+      (case (:type (val custom-field))
+        "managed-list" (custom-field-items-component {:custom-field-items custom-field-items
+                                                      :custom-field-id (key custom-field)
+                                                      :current-id ((key custom-field) current-custom-fields)
+                                                      :on-select #(on-select {:custom-field-id (key custom-field)
+                                                                              :custom-field-item-id %}) 
+                                                      })
+        nil)])])
+
+(defn jobcode-component [{:keys [jobcodes current-id on-select on-select-parent parent-id]}]
   [:div {:class "container"}
    [:p "Jobcodes"]
    [managed-list-component {:list jobcodes
-                            :on-select-child on-select-child
+                            :on-select on-select
                             :on-select-parent on-select-parent
-                            :parent-id (:parent-id jobcode-state)
-                            :timesheet-id :jobcode
-                            :child-id (:jobcode timesheet)}]
+                            :is-visible? #(= (:parent-id %) parent-id)
+                            :current-id current-id}]
    ]
   )
 
-(defn timesheet-component [{:keys [timesheet jobcodes jobcode-state on-clock-out]}]
+(defn timesheet-component [{:keys [timesheet jobcode-state custom-field-state on-clock-out]}]
   (println @timesheet)
   [:div
-   [jobcode-component {:jobcodes @jobcodes
-                       :timesheet @timesheet
-                       :on-select-child #(do
-                                           (reset-jobcode-state jobcode-state)
-                                           (select-jobcode timesheet %))
+   [jobcode-component {:jobcodes (:jobcodes @jobcode-state)
+                       :current-id (:jobcode @timesheet)
+                       :on-select #(do
+                                     (reset-jobcode-state jobcode-state)
+                                     (select-jobcode timesheet %))
                        :on-select-parent #(swap! jobcode-state assoc-in [:parent-id] %)
-                       :jobcode-state @jobcode-state}]
+                       :parent-id (:parent-id @jobcode-state)}]
    [notes-component {:notes (:notes @timesheet)
                      :on-change #(set-notes timesheet %)
                      :on-save #(set-notes timesheet %)}]
-   [clock-in-component {:clocked-in (is-clocked-in? timesheet)
-                        :on-clock-in #(clock-in timesheet)
-                        :on-clock-out #(do ((clock-out timesheet)
-                                            (on-clock-out)))}]])
+   [custom-fields-component {:custom-fields (:custom-fields @custom-field-state)
+                             :custom-field-items (:custom-field-items @custom-field-state)
+                             :current-custom-fields (:custom-fields @timesheet)
+                             :parent-ids (:parent-ids @custom-field-state)
+                             :on-select #(do 
+                                           (select-custom-field timesheet %))}]
+   [clock-in-component {:clocked-in (is-clocked-in? @timesheet)
+                        :on-clock-in #(if (valid-clock-in? @timesheet) 
+                                        (clock-in timesheet))
+                        :on-clock-out #(do (if (valid-clock-out? @timesheet)
+                                             ((clock-out timesheet)
+                                              (on-clock-out))
+                                             ))}]])
