@@ -1,5 +1,4 @@
-(ns tsheets.components.notes
-  (:require [reagent.core :as reagent :refer [atom]]))
+(ns tsheets.components.clock-in)
 
 (defn clock-in-component [{:keys [clocked-in on-clock-out on-clock-in]}]
   (if (true? clocked-in)
