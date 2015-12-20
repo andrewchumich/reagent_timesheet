@@ -6,10 +6,13 @@
             [cljs.core.async :as async
              :refer [<! >! chan put! timeout]]
             [tsheets.components.timesheet :as timesheets-components
-             :refer [timesheet-component]])
+             :refer [timesheet-component]]
+            [cljs-uuid-utils.core :as uuid])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (enable-console-print!)
+(defn make-uuid-keyword []
+  (keyword (uuid/uuid-string (uuid/make-random-uuid))))
 
 (defn reset-timesheet
   ([] (do
@@ -78,13 +81,17 @@
    (reset! custom-field-state (reset-custom-field-state))))
 
 (defonce timesheet-atom (atom (reset-timesheet)))
+(defonce timesheet-list-atom (atom {}))
 
 (defonce jobcode-state-atom (atom (reset-jobcode-state)))
 (defonce custom-field-state (atom (reset-custom-field-state)))
 
 (def save-buffer (chan))
 (go (while true
-      (println (str "COMPLETE TIMESHEET " (<! save-buffer))))
+      (let [timesheet (<! save-buffer)
+            local-id (make-uuid-keyword)] 
+        (println (str "COMPLETE TIMESHEET " timesheet))
+        (swap! timesheet-list-atom assoc-in [local-id] (assoc-in timesheet [:local-id] local-id))))
     )
 (defn save-timesheet [ts-ref]
   (go (>! save-buffer ts-ref)))
@@ -105,7 +112,9 @@
 (defn about-page []
   [:div
    [:h2 "About tsheets"]
-   
+   (for [timesheet (seq (into (sorted-map )@timesheet-list-atom))]
+     [:div {:key (key timesheet)}
+      [:p (:notes (val timesheet))]])
    [:div [:a {:href "/"} "go to the home page"]]])
 
 (defn current-page []
