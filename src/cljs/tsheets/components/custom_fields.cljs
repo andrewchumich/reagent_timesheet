@@ -11,10 +11,11 @@
    ])
 
 (defn custom-fields-component [{:keys [custom-fields custom-field-items current-custom-fields on-select]}]
-  [:div {:class "container"};
+  [:div {:class "container"}
+   [:p {:class "title"} "Custom Fields"]
    (for [custom-field (seq (into (sorted-map) custom-fields))]
      [:div {:key (key custom-field)} 
-      [:p {:class "title"} (:name (val custom-field))]
+      [:p {:class "title"} (str (:name (val custom-field)) (if (:required (val custom-field)) "*"))]
       (case (:type (val custom-field))
         "managed-list" (custom-field-items-component {:custom-field-items custom-field-items
                                                       :custom-field-id (key custom-field)

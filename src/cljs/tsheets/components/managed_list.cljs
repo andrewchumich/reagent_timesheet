@@ -13,24 +13,33 @@
                          :child ((:parent-id child) list)}))))))
 
 (defn managed-list-component []
-  (let [expanded (atom false)] 
+  (let [expanded (atom false)
+        expand #(do 
+                  (reset! expanded true)
+                  nil)
+        collapse #(do
+                    (reset! expanded false)
+                    nil)] 
     (fn [{:keys [list current-id on-select on-select-parent is-visible?]}] 
-      [:div {:on-blur #(reset! expanded false)}
-       [:button {:type "button"
-                 :disabled false
-                 :on-click #(reset! expanded false)} "Back"]
-       [:button {:type "button"
+      [:div
+       (if (true? @expanded) 
+         [:input {:type "button"
+                  :on-click (if (nil? on-select-parent) 
+                              collapse)
+                  :value "Back"}]
+         [:input {:type "button"
+                  :on-click expand
+                  :class (if (not (nil? current-id)) "selected")
+                  :value (if (nil? current-id)
+                           "Select"
+                           (:name (current-id list)))}])
+       [:input {:type "button"
                  :disabled (nil? current-id)
-                 :on-click #(on-select nil)
-                 } "X"]
-       (if (false? @expanded) 
-         [:div 
-          [:input {:type "button"
-                   :class (if (nil? current-id) "" "selected")
-                   :on-click #(reset! expanded true)
-                   :value (if (nil? current-id)
-                            "Select"
-                            (:name (current-id list)))}]]
+                 :on-click #(do
+                              (collapse)
+                              (on-select nil))
+                 :value "X"}]
+       (if (true? @expanded) 
          (for [list-item (seq (into (sorted-map) list))]
                 (if (is-visible? (val list-item))
                   [:div {:key (key list-item)}
@@ -45,7 +54,7 @@
                             :on-click #(if (true? (:has-children (val list-item)))
                                          (on-select-parent (key list-item))
                                          (do 
-                                           (reset! expanded false)
+                                           (collapse)
                                            (on-select (key list-item))))}]])
                 ))
        ])))

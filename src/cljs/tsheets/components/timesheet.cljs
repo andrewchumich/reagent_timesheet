@@ -3,7 +3,8 @@
             [tsheets.components.clock-in :refer [clock-in-component]]
             [tsheets.components.managed-list :refer [managed-list-component]]
             [tsheets.components.jobcodes :refer [jobcode-component]]
-            [tsheets.components.custom-fields :refer [custom-fields-component]]))
+            [tsheets.components.custom-fields :refer [custom-fields-component]]
+            [tsheets.utils.timesheet-validation :refer [valid-clock-out?]]))
 
 (defn set-notes [ts notes]
   (swap! ts assoc-in [:notes] notes))
@@ -14,7 +15,6 @@
   (swap! ts assoc-in [:jobcode] jobcode))
 
 (defn select-custom-field [ts custom-field]
-  (println custom-field)
   (let [custom-field-id (:custom-field-id custom-field)
         custom-field-item-id (:custom-field-item-id custom-field)] 
     (swap! ts assoc-in [:custom-fields custom-field-id] custom-field-item-id)))
@@ -29,12 +29,6 @@
 
 (defn is-clocked-in? [ts]
   (and (nil? (:end ts)) (= (type (:start ts)) js/Date)))
-
-(defn valid-clock-out? [ts]
-  (if (and (valid-clock-in? ts) (is-clocked-in? ts))
-    true
-    false
-    ))
 
 (defn clock-in [ts]
   (swap! ts assoc-in [:start] (new js/Date)))
@@ -67,7 +61,10 @@
    [clock-in-component {:clocked-in (is-clocked-in? @timesheet)
                         :on-clock-in #(if (valid-clock-in? @timesheet) 
                                         (clock-in timesheet))
-                        :on-clock-out #(do (if (valid-clock-out? @timesheet)
+                        :on-clock-out #(do (if (valid-clock-out? {:timesheet @timesheet
+                                                                  :jobcodes (:jobcodes @jobcode-state)
+                                                                  :custom-fields (:custom-fields @custom-field-state)
+                                                                  :custom-field-items (:custom-field-items @custom-field-state)})
                                              ((clock-out timesheet)
                                               (on-clock-out))
                                              ))}]])
