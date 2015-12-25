@@ -7,6 +7,7 @@
              :refer [<! >! chan put! timeout]]
             [tsheets.components.timesheet :as timesheets-components
              :refer [timesheet-component]]
+            [tsheets.utils.timesheet-validation :refer [valid-clock-out? valid-clock-in?]]
             [cljs-uuid-utils.core :as uuid])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
@@ -78,13 +79,13 @@
                                     :custom-field-id :001}}}
         ))
   ([custom-field-state]
-   (reset! custom-field-state (reset-custom-field-state))))
+   (reset! custom-field-state-atom (reset-custom-field-state))))
 
 (defonce timesheet-atom (atom (reset-timesheet)))
 (defonce timesheet-list-atom (atom {}))
 
 (defonce jobcode-state-atom (atom (reset-jobcode-state)))
-(defonce custom-field-state (atom (reset-custom-field-state)))
+(defonce custom-field-state-atom (atom (reset-custom-field-state)))
 
 (def save-buffer (chan))
 (go (while true
@@ -111,14 +112,6 @@
 
 (defn reset-jobcode-state! [jobcode-state]
   (swap! jobcode-state assoc-in [:parent-id] :0))
-
-(defn valid-clock-in? [ts]
-  (if (keyword? (:jobcode ts))
-    true
-    false))
-
-(defn valid-clock-out? [ts]
-  true)
 
 (defn is-clocked-in? [ts]
   (and (nil? (:end ts)) (= (type (:start ts)) js/Date)))
@@ -151,10 +144,13 @@
                          :on-select-jobcode #(set-jobcode! timesheet-atom %)
                          :on-select-jobcode-parent #(set-jobcode-parent! jobcode-state-atom %)
                          :on-set-notes #(set-notes! timesheet-atom %)
-                         :custom-field-state @custom-field-state
+                         :custom-field-state @custom-field-state-atom
                          :on-select-custom-field #(set-custom-field! timesheet-atom %)
-                         :on-clock-in #(clock-in! timesheet-atom)
-                         :on-clock-out #(if (valid-clock-out? timesheet-atom) 
+                         :on-clock-in #(if (valid-clock-in? @timesheet-atom) 
+                                         (clock-in! timesheet-atom))
+                         :on-clock-out #(if (valid-clock-out? {:timesheet @timesheet-atom
+                                                               :jobcodes (:jobcodes @jobcode-state-atom)
+                                                               :custom-fields (:custom-fields @custom-field-state-atom)}) 
                                         (do 
                                           (save-timesheet @timesheet-atom)
                                           (reset-jobcode-state jobcode-state-atom)
