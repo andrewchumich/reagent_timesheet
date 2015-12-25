@@ -1,4 +1,4 @@
-(ns tsheets.components.timesheet
+(ns tsheets.components.timecard
   (:require [tsheets.components.notes :refer [notes-component]]
             [tsheets.components.clock-in :refer [clock-in-component]]
             [tsheets.components.managed-list :refer [managed-list-component]]
@@ -6,7 +6,7 @@
             [tsheets.components.custom-fields :refer [custom-fields-component]]))
 (enable-console-print!)
 
-(defn timesheet-component [{:keys [timesheet
+(defn timecard-component [{:keys [timesheet
                                    jobcodes
                                    jobcode-parent-id
                                    on-select-jobcode
@@ -30,4 +30,7 @@
    [custom-fields-component {:custom-fields (:custom-fields custom-field-state)
                              :custom-field-items (:custom-field-items custom-field-state)
                              :current-custom-fields (:custom-fields timesheet)
-                             :on-select on-select-custom-field}]])
+                             :on-select on-select-custom-field}]
+   [clock-in-component {:clocked-in clocked-in?
+                        :on-clock-in on-clock-in
+                        :on-clock-out on-clock-out}]])

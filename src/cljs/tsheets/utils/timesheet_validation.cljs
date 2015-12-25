@@ -1,6 +1,6 @@
 (ns tsheets.utils.timesheet-validation)
 
-(defn valid-date? [date] (= (type date) js/Date))
+(defn valid-date? [date] (not (nil? date)))
 
 (defn valid-jobcode? [{:keys [jobcode-id jobcodes]}]
   "The jobcode id needs to be in the map of valid jobcodes"

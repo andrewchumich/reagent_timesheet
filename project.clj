@@ -21,6 +21,7 @@
                  [venantius/accountant "0.1.5"
                   :exclusions [org.clojure/tools.reader]]
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
+                 [com.andrewmcveigh/cljs-time "0.3.14"]
                  ]
 
   :plugins [[lein-environ "1.0.1"]
