@@ -21,7 +21,7 @@
                  [venantius/accountant "0.1.5"
                   :exclusions [org.clojure/tools.reader]]
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
-                 [com.andrewmcveigh/cljs-time "0.3.14"]
+                 [com.andrewmcveigh/cljs-time "0.3.14"] 
                  ]
 
   :plugins [[lein-environ "1.0.1"]
@@ -75,7 +75,8 @@
                                   [org.clojure/tools.nrepl "0.2.12"]
                                   [com.cemerick/piggieback "0.2.1"]
                                                                     [pjstadig/humane-test-output "0.7.0"]
-                                  ]
+                                  [devcards "0.2.0-8"
+                                   :exclusions [org.clojure/tools.reader]]]
 
                    :source-paths ["env/dev/clj"]
                    :plugins [[lein-figwheel "0.5.0-2"
@@ -107,7 +108,14 @@
                    :cljsbuild {:builds {:app {:source-paths ["env/dev/cljs"]
                                               :compiler {:main "tsheets.dev"
                                                          :source-map true}}
-
+                                        :devcards {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
+                                                   :figwheel {:devcards true}
+                                                   :compiler {:main "tsheets.cards"
+                                                              :asset-path "js/devcards_out"
+                                                              :output-to "target/cljsbuild/public/js/app_devcards.js"
+                                                              :output-dir "target/cljsbuild/public/js/devcards_out"
+                                                              :source-map-timestamp true}}
+                                        
 
                                         }
 

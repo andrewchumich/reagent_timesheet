@@ -27,11 +27,20 @@
      mount-target
      (include-js "js/app.js")]]))
 
+(def cards-page
+  (html
+   [:html
+    [:head
+     [:meta {:charset "utf-8"}]]
+    [:body
+     mount-target
+     (include-js "js/app_devcards.js")]]))
+
 
 (defroutes routes
   (GET "/" [] loading-page)
   (GET "/about" [] loading-page)
-  
+  (GET "/cards" [] cards-page)
   (resources "/")
   (not-found "Not Found"))
 
