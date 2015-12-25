@@ -5,66 +5,33 @@
             [tsheets.components.jobcodes :refer [jobcode-component]]
             [tsheets.components.custom-fields :refer [custom-fields-component]]
             [tsheets.utils.timesheet-validation :refer [valid-clock-out?]]))
-
-(defn set-notes [ts notes]
-  (swap! ts assoc-in [:notes] notes))
-
 (enable-console-print!)
 
-(defn select-jobcode [ts jobcode]
-  (swap! ts assoc-in [:jobcode] jobcode))
-
-(defn select-custom-field [ts custom-field]
-  (let [custom-field-id (:custom-field-id custom-field)
-        custom-field-item-id (:custom-field-item-id custom-field)] 
-    (swap! ts assoc-in [:custom-fields custom-field-id] custom-field-item-id)))
-
-(defn reset-jobcode-state [jobcode-state]
-  (swap! jobcode-state assoc-in [:parent-id] :0))
-
-(defn valid-clock-in? [ts]
-  (if (keyword? (:jobcode ts))
-    true
-    false))
-
-(defn is-clocked-in? [ts]
-  (and (nil? (:end ts)) (= (type (:start ts)) js/Date)))
-
-(defn clock-in [ts]
-  (swap! ts assoc-in [:start] (new js/Date)))
-
-(defn clock-out [ts]
-  (swap! ts assoc-in [:end] (new js/Date)))
-
-(defn get-jobcode [{:keys [jobcode-id jobcodes]}]
-  true)
-
-(defn timesheet-component [{:keys [timesheet jobcode-state custom-field-state on-clock-out]}]
-  (println @timesheet)
+(defn timesheet-component [{:keys [timesheet
+                                   jobcodes
+                                   jobcode-parent-id
+                                   on-select-jobcode
+                                   on-select-jobcode-parent
+                                   custom-field-state 
+                                   on-select-custom-field
+                                   on-set-notes
+                                   on-clock-out
+                                   on-clock-in
+                                   clocked-in?]}]
+  (println timesheet)
   [:div
-   [jobcode-component {:jobcodes (:jobcodes @jobcode-state)
-                       :current-id (:jobcode @timesheet)
-                       :on-select #(do
-                                     (reset-jobcode-state jobcode-state)
-                                     (select-jobcode timesheet %))
-                       :on-select-parent #(swap! jobcode-state assoc-in [:parent-id] %)
-                       :parent-id (:parent-id @jobcode-state)}]
-   [notes-component {:notes (:notes @timesheet)
-                     :on-change #(set-notes timesheet %)
-                     :on-save #(set-notes timesheet %)}]
-   [custom-fields-component {:custom-fields (:custom-fields @custom-field-state)
-                             :custom-field-items (:custom-field-items @custom-field-state)
-                             :current-custom-fields (:custom-fields @timesheet)
-                             :parent-ids (:parent-ids @custom-field-state)
-                             :on-select #(do 
-                                           (select-custom-field timesheet %))}]
-   [clock-in-component {:clocked-in (is-clocked-in? @timesheet)
-                        :on-clock-in #(if (valid-clock-in? @timesheet) 
-                                        (clock-in timesheet))
-                        :on-clock-out #(do (if (valid-clock-out? {:timesheet @timesheet
-                                                                  :jobcodes (:jobcodes @jobcode-state)
-                                                                  :custom-fields (:custom-fields @custom-field-state)
-                                                                  :custom-field-items (:custom-field-items @custom-field-state)})
-                                             ((clock-out timesheet)
-                                              (on-clock-out))
-                                             ))}]])
+   [jobcode-component {:jobcodes jobcodes
+                       :current-id (:jobcode timesheet)
+                       :on-select on-select-jobcode
+                       :on-select-parent on-select-jobcode-parent
+                       :parent-id jobcode-parent-id}]
+   [notes-component {:notes (:notes timesheet)
+                     :on-change on-set-notes
+                     :on-save on-set-notes}]
+   [custom-fields-component {:custom-fields (:custom-fields custom-field-state)
+                             :custom-field-items (:custom-field-items custom-field-state)
+                             :current-custom-fields (:custom-fields timesheet)
+                             :on-select on-select-custom-field}]
+   [clock-in-component {:clocked-in clocked-in?
+                        :on-clock-in on-clock-in
+                        :on-clock-out on-clock-out}]])
