@@ -3,7 +3,8 @@
             [tsheets.components.clock-in :refer [clock-in-component]]
             [tsheets.components.managed-list :refer [managed-list-component]]
             [tsheets.components.jobcodes :refer [jobcode-component]]
-            [tsheets.components.custom-fields :refer [custom-fields-component]]))
+            [tsheets.components.custom-fields :refer [custom-fields-component]]
+            [tsheets.components.datetime-picker :refer [datetime-picker-component]]))
 (enable-console-print!)
 
 (defn timesheet-component [{:keys [timesheet
@@ -14,9 +15,8 @@
                                    custom-field-state 
                                    on-select-custom-field
                                    on-set-notes
-                                   on-clock-out
-                                   on-clock-in
-                                   clocked-in?]}]
+                                   on-set-start
+                                   on-set-end]}]
   (println timesheet)
   [:div
    [jobcode-component {:jobcodes jobcodes
@@ -30,4 +30,6 @@
    [custom-fields-component {:custom-fields (:custom-fields custom-field-state)
                              :custom-field-items (:custom-field-items custom-field-state)
                              :current-custom-fields (:custom-fields timesheet)
-                             :on-select on-select-custom-field}]])
+                             :on-select on-select-custom-field}]
+   [datetime-picker-component {:current-time (:start timesheet)
+                               :on-change #(on-set-start %)}]])

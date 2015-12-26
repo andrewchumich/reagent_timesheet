@@ -25,6 +25,12 @@ body {
     margin: 5px;
 }
 
+.picker {
+   background-color: #aaa;
+   display: inline-block;
+   width: 50px;
+}
+
 h1, h2, h3 {
   color: #000;
 }

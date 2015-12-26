@@ -130,11 +130,16 @@
    (not (nil? (:start ts)))
    (nil? (:end ts))))
 
+(defn set-start [ts start]
+  (swap! ts assoc-in [:start] start))
+
+(defn set-end [ts end]
+  (swap! ts assoc-in [:end] end))
+
 (defn get-jobcode [{:keys [jobcode-id jobcodes]}]
   true)
 
 (defn set-jobcode-parent! [jobcode-state parent-id]
-  (println jobcode-state)
   (swap! jobcode-state assoc-in [:parent-id] parent-id))
 ;; -------------------------
 ;; Views
@@ -176,16 +181,8 @@
                          :on-set-notes #(set-notes! timesheet-atom %)
                          :custom-field-state @custom-field-state-atom
                          :on-select-custom-field #(set-custom-field! timesheet-atom %)
-                         :on-clock-in #(if (valid-clock-in? @timesheet-atom) 
-                                         (clock-in! timesheet-atom))
-                         :on-clock-out #(if (valid-clock-out? {:timesheet @timesheet-atom
-                                                               :jobcodes (:jobcodes @jobcode-state-atom)
-                                                               :custom-fields (:custom-fields @custom-field-state-atom)}) 
-                                        (do 
-                                          (save-timesheet @timesheet-atom)
-                                          (reset-jobcode-state jobcode-state-atom)
-                                          (reset-timesheet timesheet-atom)))
-                         :clocked-in? (clocked-in? @timesheet-atom)}]
+                         :on-set-start #(set-start timesheet-atom %)
+                         :on-set-end #(set-end timesheet-atom %)}]
    [:div [:a {:href "/about"} "go to about page"]]
    [:div [:a {:href "/"} "see timecard"]]])
 
