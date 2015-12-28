@@ -7,7 +7,7 @@
              :refer [<! >! chan put! timeout]]
             [tsheets.components.timecard :refer [timecard-component]]
             [tsheets.components.timesheet :refer [timesheet-component]]
-            [tsheets.utils.timesheet-validation :refer [valid-clock-out? valid-clock-in?]]
+            [tsheets.utils.timesheet-validation :refer [valid-clock-out? valid-clock-in? valid-submit?]]
             [cljs-uuid-utils.core :as uuid]
             [cljs-time.core :as time])
   (:require-macros [cljs.core.async.macros :refer [go]]))
@@ -86,6 +86,11 @@
 (defonce timecard-atom (atom (reset-timesheet)))
 (defonce timesheet-list-atom (atom {}))
 
+(defn edit-timesheet-list [{:keys [list id timesheet]}]
+  (println (:notes @timesheet))
+;  (swap! list assoc-in [id] timesheet)
+  )
+
 (defonce jobcode-state-atom (atom (reset-jobcode-state)))
 (defonce custom-field-state-atom (atom (reset-custom-field-state)))
 
@@ -131,9 +136,11 @@
    (nil? (:end ts))))
 
 (defn set-start [ts start]
+  (println "SET START")
   (swap! ts assoc-in [:start] start))
 
 (defn set-end [ts end]
+  (println "SET END")
   (swap! ts assoc-in [:end] end))
 
 (defn get-jobcode [{:keys [jobcode-id jobcodes]}]
@@ -169,7 +176,7 @@
    [:div [:a {:href "/about"} "go to about page"]]
    [:div [:a {:href "/add"} "add timesheet"]]])
 
-(defn timesheet-page []
+(defn add-timesheet-page []
   [:div
    [timesheet-component {:timesheet @timesheet-atom
                          :jobcodes (:jobcodes @jobcode-state-atom)
@@ -182,17 +189,48 @@
                          :custom-field-state @custom-field-state-atom
                          :on-select-custom-field #(set-custom-field! timesheet-atom %)
                          :on-set-start #(set-start timesheet-atom %)
-                         :on-set-end #(set-end timesheet-atom %)}]
+                         :on-set-end #(set-end timesheet-atom %)
+                         :on-submit #(if (valid-submit? {:timesheet @timesheet-atom
+                                                         :jobcodes (:jobcodes @jobcode-state-atom)
+                                                         :custom-fields (:custom-fields @custom-field-state-atom)}) 
+                                       (do 
+                                          (save-timesheet @timesheet-atom)
+                                          (reset-jobcode-state jobcode-state-atom)
+                                          (reset-timesheet timesheet-atom)))}]
    [:div [:a {:href "/about"} "go to about page"]]
    [:div [:a {:href "/"} "see timecard"]]])
 
+(defn edit-timesheet-page [id]
+  (println ((keyword id) @timesheet-list-atom))
+  (let [timesheet (atom ((keyword id) @timesheet-list-atom))
+        timesheet-id (keyword id)] 
+    [:div
+     [timesheet-component {:timesheet @timesheet
+                           :jobcodes (:jobcodes @jobcode-state-atom)
+                           :jobcode-parent-id (:parent-id @jobcode-state-atom)
+                           :on-select-jobcode #()
+                           :on-select-jobcode-parent #()
+                           :on-set-notes #(edit-timesheet-list {:list timesheet-list-atom
+                                                                :id timesheet-id
+                                                                :timesheet timesheet})
+                           :custom-field-state @custom-field-state-atom
+                           :on-select-custom-field #()
+                           :on-set-start #()
+                           :on-set-end #()
+                           :on-submit #()}]
+     [:div [:a {:href "/about"} "go to about page"]]
+     [:div [:a {:href "/"} "see timecard"]]])
+  )
 
 (defn about-page []
   [:div
    [:h2 "About tsheets"]
-   (for [timesheet (seq (into (sorted-map) @timesheet-list-atom))]
-     [:div {:key (key timesheet)}
-      [:p (:notes (val timesheet))]])
+   [:div {:class "timesheet-list"}
+    (for [timesheet (seq (into (sorted-map) @timesheet-list-atom))]
+     [:div {:key (key timesheet)
+            :class "timesheet-row"}
+      [:p (:notes (val timesheet))]
+      [:a {:href (str "/edit/" (name (key timesheet)))} "edit"]])]
    [:div [:a {:href "/"} "go to the home page"]]])
 
 (defn current-page []
@@ -205,7 +243,10 @@
   (session/put! :current-page #(timecard-page)))
 
 (secretary/defroute "/add" []
-  (session/put! :current-page #(timesheet-page)))
+  (session/put! :current-page #(add-timesheet-page)))
+
+(secretary/defroute "/edit/:id" [id]
+  (session/put! :current-page #(edit-timesheet-page id)))
 
 (secretary/defroute "/about" []
   (session/put! :current-page #'about-page))

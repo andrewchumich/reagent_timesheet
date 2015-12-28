@@ -19,8 +19,17 @@
     false))
 
 (defn valid-clock-out? [{:keys [timesheet jobcodes custom-fields custom-field-items]}]
-  (print "HELLO")
   (and (valid-date? (:start timesheet)) 
+       (valid-jobcode? {:jobcode-id (:jobcode timesheet)
+                        :jobcodes jobcodes})
+       (valid-custom-fields? {:custom-field-ids (:custom-fields timesheet)
+                              :custom-fields custom-fields
+                              :custom-field-items custom-field-items})))
+
+(defn valid-submit? [{:keys [timesheet jobcodes custom-fields custom-field-items]}]
+  (println timesheet)
+  (and (valid-date? (:start timesheet))
+       (valid-date? (:end timesheet))
        (valid-jobcode? {:jobcode-id (:jobcode timesheet)
                         :jobcodes jobcodes})
        (valid-custom-fields? {:custom-field-ids (:custom-fields timesheet)

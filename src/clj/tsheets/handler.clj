@@ -41,6 +41,7 @@
   (GET "/" [] loading-page)
   (GET "/about" [] loading-page)
   (GET "/add" [] loading-page)
+  (GET "/edit/:id" [] loading-page)
   (GET "/cards" [] cards-page)
   (resources "/")
   (not-found "Not Found"))

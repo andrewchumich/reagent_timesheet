@@ -16,7 +16,8 @@
                                    on-select-custom-field
                                    on-set-notes
                                    on-set-start
-                                   on-set-end]}]
+                                   on-set-end
+                                   on-submit]}]
   (println timesheet)
   [:div
    [jobcode-component {:jobcodes jobcodes
@@ -31,5 +32,14 @@
                              :custom-field-items (:custom-field-items custom-field-state)
                              :current-custom-fields (:custom-fields timesheet)
                              :on-select on-select-custom-field}]
-   [datetime-picker-component {:current-time (:start timesheet)
-                               :on-change #(on-set-start %)}]])
+   [:div
+    [:p "Start"]
+    [datetime-picker-component {:current-time (:start timesheet)
+                                :on-change #(on-set-start %)}]]
+   [:div
+    [:p "End"]
+    [datetime-picker-component {:current-time (:end timesheet)
+                                :on-change #(on-set-end %)}]]
+   [:input {:type "button"
+            :on-click on-submit
+            :value "Submit"}]])

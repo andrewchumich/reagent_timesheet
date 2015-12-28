@@ -15,11 +15,8 @@
             :class "picker-down"}]])
 
 (defn time-picker-component [{:keys [current-time on-change]}]
-  [:div 
+  [:div {:class "datetime-picker-time"}
    [:p "Time"]
-   [picker-component {:data (time/day current-time)
-                      :on-up #(on-change (time/plus current-time (time/days 1)))
-                      :on-down #(on-change (time/minus current-time (time/days 1)))}]
    [picker-component {:data (time/hour current-time)
                       :on-up #(on-change (time/plus current-time (time/hours 1)))
                       :on-down #(on-change (time/minus current-time (time/hours 1)))}]
@@ -29,17 +26,22 @@
    ])
 
 (defn datetime-picker-component [{:keys [current-time on-change]}] 
-  (let [current-time (if (nil? current-time) (time/now) current-time)]
+  (if (nil? current-time) 
+    (do 
+      (on-change (time/now))
+      nil)
     [:div {:class "datetime-picker"}
-     [:div 
-      [:p "Date"]
-      [picker-component {:data (time/year current-time)
-                         :on-up #(on-change (time/plus current-time (time/years 1)))
-                         :on-down #(on-change (time/minus current-time (time/years 1)))}]
-      [picker-component {:data (time/month current-time)
-                         :on-up #(on-change (time/plus current-time (time/months 1)))
-                         :on-down #(on-change (time/minus current-time (time/months 1)))}]]
-     [time-picker-component {:current-time current-time
-                             :on-change on-change}]
-     ])
-)
+          [:div {:class "datetime-picker-date"}
+           [:p "Date"]
+           [picker-component {:data (time/year current-time)
+                              :on-up #(on-change (time/plus current-time (time/years 1)))
+                              :on-down #(on-change (time/minus current-time (time/years 1)))}]
+           [picker-component {:data (time/month current-time)
+                              :on-up #(on-change (time/plus current-time (time/months 1)))
+                              :on-down #(on-change (time/minus current-time (time/months 1)))}]
+           [picker-component {:data (time/day current-time)
+                              :on-up #(on-change (time/plus current-time (time/days 1)))
+                              :on-down #(on-change (time/minus current-time (time/days 1)))}]]
+          [time-picker-component {:current-time current-time
+                                  :on-change on-change}]
+          ]))
