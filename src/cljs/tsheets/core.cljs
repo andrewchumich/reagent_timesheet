@@ -8,6 +8,16 @@
             [tsheets.components.timecard :refer [timecard-component]]
             [tsheets.components.timesheet :refer [timesheet-component]]
             [tsheets.utils.timesheet-validation :refer [valid-clock-out? valid-clock-in? valid-submit?]]
+            [tsheets.utils.timesheet :refer [reset-timesheet
+                                             update-timesheet!
+                                             set-notes!
+                                             set-jobcode!
+                                             set-custom-field!
+                                             clocked-in?
+                                             clock-in!
+                                             clock-out!
+                                             set-start!
+                                             set-end!]]
             [cljs-uuid-utils.core :as uuid]
             [cljs-time.core :as time])
   (:require-macros [cljs.core.async.macros :refer [go]]))
@@ -16,20 +26,10 @@
 (defn make-uuid-keyword []
   (keyword (uuid/uuid-string (uuid/make-random-uuid))))
 
-(defn reset-timesheet
-  ([] (do
-        {:start nil
-         :end nil
-         :jobcode nil
-         :custom-fields {:000 nil
-                         :001 nil}
-         :notes ""}))
-  ([timesheet] (do
-                 (reset! timesheet (reset-timesheet)))))
-
 (defn reset-jobcode-state
   ([] (do
-        {:parent-ids {:timesheet :0
+        {:parent-ids {:add-timesheet :0
+                      :edit-timesheet :0
                       :timecard :0}
          :jobcodes {:000 {:name "Flipping Burgers"
                           :id :000
@@ -57,9 +57,7 @@
 
 (defn reset-custom-field-state
   ([] (do
-        {:parent-ids {:000 :0
-                      :001 :0}
-         :custom-fields {:000 {:name "Not Req 1"
+        {:custom-fields {:000 {:name "Not Req 1"
                                :id :000
                                :required false
                                :type "managed-list"}
@@ -87,12 +85,6 @@
 (defonce timecard-atom (atom (reset-timesheet)))
 (defonce timesheet-list-atom (atom {}))
 
-(defn update-timesheet! [{:keys [list id timesheet]}]
-  (println @list)
-  (swap! list assoc-in [id] timesheet)
-  (println @list)
-  )
-
 (defonce jobcode-state-atom (atom (reset-jobcode-state)))
 (defonce custom-field-state-atom (atom (reset-custom-field-state)))
 
@@ -108,44 +100,11 @@
 
 ;; function to manipulate app state
 
-(defn set-notes! [ts notes]
-  (swap! ts assoc-in [:notes] notes))
-
-(defn set-jobcode! [ts jobcode]
-  (swap! ts assoc-in [:jobcode] jobcode))
-
-(defn set-custom-field! [ts custom-field]
-  (let [custom-field-id (:custom-field-id custom-field)
-        custom-field-item-id (:custom-field-item-id custom-field)] 
-    (swap! ts assoc-in [:custom-fields custom-field-id] custom-field-item-id)))
-
-(defn is-clocked-in? [ts]
-  (and (nil? (:end ts)) (not (nil? (:start ts)))))
-
-(defn clock-in! [ts]
-  (swap! ts assoc-in [:start] (time/now)))
-
-
-(defn clock-out! [ts]
-  (swap! ts assoc-in [:end] (time/now)))
-
-(defn clocked-in? [ts] 
-  (and
-   (not (nil? (:start ts)))
-   (nil? (:end ts))))
-
-(defn set-start [ts start]
-  (println "SET START")
-  (swap! ts assoc-in [:start] start))
-
-(defn set-end [ts end]
-  (println "SET END")
-  (swap! ts assoc-in [:end] end))
 
 (defn get-jobcode [{:keys [jobcode-id jobcodes]}]
   true)
 
-(defn set-jobcode-parent! [jobcode-state parent-id type]
+(defn set-jobcode-parent! [{:keys [jobcode-state parent-id type]}]
   (swap! jobcode-state assoc-in [:parent-ids type] parent-id))
 ;; -------------------------
 ;; Views
@@ -153,25 +112,31 @@
 (defn timecard-page []
   [:div
    [timecard-component {:timesheet @timecard-atom
-                         :jobcodes (:jobcodes @jobcode-state-atom)
-                         :jobcode-parent-id (:timecard (:parent-ids @jobcode-state-atom))
-                         :on-select-jobcode #(do 
-                                               (set-jobcode-parent! jobcode-state-atom :0 :timecard)
-                                               (set-jobcode! timecard-atom %))
-                         :on-select-jobcode-parent #(set-jobcode-parent! jobcode-state-atom % :timecard)
-                         :on-set-notes #(set-notes! timecard-atom %)
-                         :custom-field-state @custom-field-state-atom
-                         :on-select-custom-field #(set-custom-field! timecard-atom %)
-                         :on-clock-in #(if (valid-clock-in? @timecard-atom) 
-                                         (clock-in! timecard-atom))
-                         :on-clock-out #(if (valid-clock-out? {:timesheet @timecard-atom
-                                                               :jobcodes (:jobcodes @jobcode-state-atom)
-                                                               :custom-fields (:custom-fields @custom-field-state-atom)}) 
-                                        (do 
-                                          (save-timesheet @timecard-atom)
-                                          (set-jobcode-parent! jobcode-state-atom :0 :timecard)
-                                          (reset-timesheet timecard-atom)))
-                         :clocked-in? (clocked-in? @timecard-atom)}]
+                        :jobcodes (:jobcodes @jobcode-state-atom)
+                        :jobcode-parent-id (:timecard (:parent-ids @jobcode-state-atom))
+                        :on-select-jobcode #(do 
+                                              (set-jobcode-parent! {:jobcode-state jobcode-state-atom
+                                                                    :parent-id :0
+                                                                    :type :timecard})
+                                              (set-jobcode! timecard-atom %))
+                        :on-select-jobcode-parent #(set-jobcode-parent! {:jobcode-state jobcode-state-atom
+                                                                         :parent-id %
+                                                                         :type :timecard})
+                        :on-set-notes #(set-notes! timecard-atom %)
+                        :custom-field-state @custom-field-state-atom
+                        :on-select-custom-field #(set-custom-field! timecard-atom %)
+                        :on-clock-in #(if (valid-clock-in? @timecard-atom) 
+                                        (clock-in! timecard-atom))
+                        :on-clock-out #(if (valid-clock-out? {:timesheet @timecard-atom
+                                                              :jobcodes (:jobcodes @jobcode-state-atom)
+                                                              :custom-fields (:custom-fields @custom-field-state-atom)}) 
+                                         (do 
+                                           (save-timesheet @timecard-atom)
+                                           (set-jobcode-parent! {:jobcode-state jobcode-state-atom
+                                                                 :parent-id :0
+                                                                 :type :timecard})
+                                           (reset-timesheet timecard-atom)))
+                        :clocked-in? (clocked-in? @timecard-atom)}]
    [:div [:a {:href "/about"} "go to about page"]]
    [:div [:a {:href "/add"} "add timesheet"]]])
 
@@ -179,22 +144,28 @@
   [:div
    [timesheet-component {:timesheet @timesheet-atom
                          :jobcodes (:jobcodes @jobcode-state-atom)
-                         :jobcode-parent-id (:timesheet (:parent-ids @jobcode-state-atom))
+                         :jobcode-parent-id (:add-timesheet (:parent-ids @jobcode-state-atom))
                          :on-select-jobcode #(do
-                                               (set-jobcode-parent! jobcode-state-atom :0 :timesheet)
+                                               (set-jobcode-parent! {:jobcode-state jobcode-state-atom
+                                                                     :parent-id :0
+                                                                     :type :add-timesheet})
                                                (set-jobcode! timesheet-atom %))
-                         :on-select-jobcode-parent #(set-jobcode-parent! jobcode-state-atom % :timesheet)
+                         :on-select-jobcode-parent #(set-jobcode-parent! {:jobcode-state jobcode-state-atom
+                                                                          :parent-id %
+                                                                          :type :add-timesheet})
                          :on-set-notes #(set-notes! timesheet-atom %)
                          :custom-field-state @custom-field-state-atom
                          :on-select-custom-field #(set-custom-field! timesheet-atom %)
-                         :on-set-start #(set-start timesheet-atom %)
-                         :on-set-end #(set-end timesheet-atom %)
+                         :on-set-start #(set-start! timesheet-atom %)
+                         :on-set-end #(set-end! timesheet-atom %)
                          :on-submit #(if (valid-submit? {:timesheet @timesheet-atom
                                                          :jobcodes (:jobcodes @jobcode-state-atom)
                                                          :custom-fields (:custom-fields @custom-field-state-atom)}) 
                                        (do 
-                                          (save-timesheet @timesheet-atom)
-                                          (set-jobcode-parent! jobcode-state-atom :0 :timesheet)
+                                         (save-timesheet @timesheet-atom)
+                                         (set-jobcode-parent! {:jobcode-state jobcode-state-atom
+                                                               :parent-id :0
+                                                               :type :add-timesheet})
                                           (reset-timesheet timesheet-atom)))}]
    [:div [:a {:href "/about"} "go to about page"]]
    [:div [:a {:href "/"} "see timecard"]]])
@@ -203,20 +174,23 @@
   (let [timesheet (atom ((keyword id) @timesheet-list-atom))
         timesheet-id (keyword id)] 
     (fn [] 
-      (println @timesheet)
       [:div
        [timesheet-component {:timesheet @timesheet
                              :jobcodes (:jobcodes @jobcode-state-atom)
-                             :jobcode-parent-id (:parent-id @jobcode-state-atom)
-                             :on-select-jobcode #()
-                             :on-select-jobcode-parent #()
-                             :on-set-notes #(do
-                                              (println %)
-                                              (swap! timesheet assoc-in [:notes] %))
+                             :jobcode-parent-id (:edit-timesheet (:parent-ids @jobcode-state-atom))
+                             :on-select-jobcode #(do
+                                                   (set-jobcode-parent! {:jobcode-state jobcode-state-atom
+                                                                         :parent-id :0
+                                                                         :type :edit-timesheet})
+                                                   (set-jobcode! timesheet %))
+                             :on-select-jobcode-parent #(set-jobcode-parent! {:jobcode-state jobcode-state-atom
+                                                                              :parent-id %
+                                                                              :type :edit-timesheet})
+                             :on-set-notes #(set-notes! timesheet %)
                              :custom-field-state @custom-field-state-atom
-                             :on-select-custom-field #()
-                             :on-set-start #()
-                             :on-set-end #()
+                             :on-select-custom-field #(set-custom-field! timesheet %)
+                             :on-set-start #(set-start! timesheet %)
+                             :on-set-end #(set-end! timesheet %)
                              :on-submit #(update-timesheet! {:list timesheet-list-atom
                                                             :id timesheet-id
                                                             :timesheet @timesheet})}]
